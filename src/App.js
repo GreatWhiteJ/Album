@@ -9,155 +9,22 @@ import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "@material-ui/core/Drawer";
 import { Link, Route } from "react-router-dom";
-import { auth } from "./firebase";
+import { auth, db, snapshotToArray } from "./firebase";
+import Photos from "./Photos";
+import AddAlbum from "./AddAlbum";
+import List from "@material-ui/core/List";
+import ListItem from "@material-ui/core/ListItem";
+import ListItemText from "@material-ui/core/ListItemText";
 
-export function SignIn(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const refresh = auth.onAuthStateChanged(u => {
-      if (u) {
-        props.history.push("/app");
-      }
-    });
-    return refresh;
-  }, [props.history]);
-
-  const handleSignIn = () => {
-    auth
-      .signInWithEmailAndPassword(email, password)
-      .then(() => {})
-      .catch(error => {
-        window.alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography color="inherit" variant="h6">
-            Sign In
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "400px", marginTop: 30, padding: "40px" }}>
-          <TextField
-            fullWidth={true}
-            placeholder="email"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            fullWidth={true}
-            placeholder="password"
-            value={password}
-            type="password"
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-            style={{ marginTop: 20 }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "30px",
-              alignItems: "center"
-            }}
-          >
-            <div>
-              Don't have an account? <Link to="/signup">Sign up!</Link>
-            </div>
-            <Button color="primary" variant="contained" onClick={handleSignIn}>
-              Sign In
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
-
-export function SignUp(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSignUp = () => {
-    auth
-      .createUserWithEmailAndPassword(email, password)
-      .then(() => {
-        props.history.push("/app");
-      })
-      .catch(error => {
-        window.alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography color="inherit" variant="h6">
-            Sign Up
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "400px", marginTop: 30, padding: "40px" }}>
-          <TextField
-            fullWidth={true}
-            placeholder="email"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            fullWidth={true}
-            placeholder="password"
-            type="password"
-            value={password}
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-            style={{ marginTop: 20 }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "30px",
-              alignItems: "center"
-            }}
-          >
-            <div>
-              Already have an account? <Link to="/">Sign in!</Link>
-            </div>
-            <Button color="primary" variant="contained" onClick={handleSignUp}>
-              Sign Up
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
 
 export function App(props) {
   const [drawer_open, setDrawerOpen] = useState(false);
-  const handleMenuOpen = () => {
-    setDrawerOpen(true);
-  };
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-  };
-
   const [user, setUser] = useState(null);
+  const [dialog_open, setDialogOpen] = useState(false);
+  const [albums, setAlbums] = useState([
+    { id: 0, name: "Nature" },
+    { id: 1, name: "Fam" }
+  ]);
 
   useEffect(() => {
     const refresh = auth.onAuthStateChanged(u => {
@@ -170,6 +37,18 @@ export function App(props) {
     return refresh;
   }, [props.history]);
 
+  useEffect(() => {
+    if (user) {
+      db.collection("users")
+        .doc(user.uid)
+        .collection("albums")
+        .onSnapshot(snapshot => {
+          const updated_albums = snapshotToArray(snapshot);
+          setAlbums(updated_albums);
+        });
+    }
+  }, [user]);
+
   const handleSignOut = () => {
     auth
       .signOut()
@@ -177,6 +56,13 @@ export function App(props) {
       .catch(error => {
         window.alert(error.message);
       });
+  };
+
+  const handleMenuOpen = () => {
+    setDrawerOpen(true);
+  };
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
   };
 
   if (!user) return <div />;
@@ -204,24 +90,44 @@ export function App(props) {
         </Toolbar>
       </AppBar>
       <Drawer open={drawer_open} onClose={handleCloseDrawer}>
-        I'm a drawer
+        <List component="nav">
+          {albums.map(a => {
+            return (
+              <ListItem
+                button
+                to={"/app/album/" + a.id + "/"}
+                component={Link}
+                onClick={() => {
+                  setDrawerOpen(false);
+                }}
+              >
+                <ListItemText primary={a.name} />
+              </ListItem>
+            );
+          })}
+
+          <ListItem
+            button
+            onClick={() => {
+              setDialogOpen(true);
+            }}
+          >
+            <ListItemText primary="Create New" />
+          </ListItem>
+        </List>
       </Drawer>
-      <Route
-        exact
-        path="/app"
-        render={() => {
-          return (
-            <div>
-              <div>Home Page</div>
-              <Link to="/app/product/1">Product 1</Link>
-            </div>
-          );
+      <AddAlbum
+        open={dialog_open}
+        onClose={() => {
+          setDialogOpen(false);
         }}
+        user={user}
       />
       <Route
-        path="/app/product/:id"
-        render={() => {
-          return <div>Product 1</div>;
+        path="/app/album/:album_id/"
+        render={routeProps => {
+          console.log(routeProps);
+          return <Photos user={user} {...routeProps} />;
         }}
       />
     </div>

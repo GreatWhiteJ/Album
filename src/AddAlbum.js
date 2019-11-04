@@ -13,6 +13,7 @@ export default function AddAlbum(props) {
       .doc(props.user.uid)
       .collection("albums")
       .add({ name: name });
+    props.onClose();
   };
   return (
     <Dialog open={props.open} onClose={props.onClose} maxWidth="sm" fullWidth>

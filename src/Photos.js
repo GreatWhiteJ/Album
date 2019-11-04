@@ -20,6 +20,7 @@ export default function Photos(props) {
       });
     return refresh;
   }, [props]);
+
   return (
     <div style={{ display: "flex", flexWrap: "wrap", padding: 10 }}>
       {photos.map(p => {

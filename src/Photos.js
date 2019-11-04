@@ -2,30 +2,24 @@ import React, { useState, useEffect } from "react";
 import PhotoCard from "./PhotoCard";
 import AddPhoto from "./AddPhoto";
 import { Button } from "@material-ui/core";
+import { db, snapshotToArray } from "./firebase";
 
 export default function Photos(props) {
   const [dialog_open, setDialogOpen] = useState(false);
-  const [photos, setPhotos] = useState([
-    {
-      id: 0,
-      title: "mountian",
-      image:
-        "https://images.pexels.com/photos/3075988/pexels-photo-3075988.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"
-    },
-    {
-      id: 1,
-      title: "tree",
-      image:
-        "https://images.pexels.com/photos/2767557/pexels-photo-2767557.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"
-    },
-    {
-      id: 2,
-      title: "lake",
-      image:
-        "https://images.pexels.com/photos/2832023/pexels-photo-2832023.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"
-    }
-  ]);
-
+  const [photos, setPhotos] = useState([]);
+  useEffect(() => {
+    const refresh = db
+      .collection("users")
+      .doc(props.user.uid)
+      .collection("albums")
+      .doc(props.match.params.album_id)
+      .collection("photos")
+      .onSnapshot(snapshot => {
+        const updatedPhotos = snapshotToArray(snapshot);
+        setPhotos(updatedPhotos);
+      });
+    return refresh;
+  }, [props]);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", padding: 10 }}>
       {photos.map(p => {
